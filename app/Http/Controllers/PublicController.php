@@ -16,14 +16,24 @@ class PublicController extends Controller
 
     public function contactUs(Request $request)
     {
-        $user = $request->input('user');
-        $email = $request->input('email');
-        $message = $request->input('message');
+        $validatedData = $request->validate([
+            'user' => ['required', 'string', 'min:2', 'max:100'],
+            'email' => ['required', 'email:rfc,dns', 'max:255'],
+            'message' => ['required', 'string', 'min:10', 'max:2000'],
+        ]);
 
-        $userData = compact('user', 'email', 'message');
+        $recipientAddress = config('mail.to.address', config('mail.from.address'));
+        $recipientName = config('mail.to.name');
 
         try {
-            Mail::to($email)->send(new ContactMail($userData));
+            Mail::to($recipientAddress, $recipientName)
+                ->send(
+                    (new ContactMail(
+                        user: $validatedData['user'],
+                        email: $validatedData['email'],
+                        message: $validatedData['message'],
+                    ))->replyTo($validatedData['email'], $validatedData['user'])
+                );
 
             return redirect()
                 ->route('homepage')
